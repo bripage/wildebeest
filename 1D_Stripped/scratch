@@ -1,0 +1,24 @@
+bpage1@Ceres:~/Documents$ ./research/emuSGD/utility/checkcsv -i news20_train.csv
+feature file opened
+sample count = 14957
+feature count = 6746487
+features greater than 1 = 0
+max value = 0.7071070000
+min value = 0.0078030000
+average value = 0.0421201232
+Done!
+bpage1@Ceres:~/Documents$ ./research/emuSGD/utility/checkcsv -i news20_test.csv
+feature file opened
+sample count = 4985
+feature count = 2331475
+features greater than 1 = 0
+max value = 0.7071070000
+min value = 0.0078300000
+average value = 0.0413450724
+Done!
+
+
+../emuSGD/utility/csv2bin -i news20_train.csv -o news20_train.bin
+
+
+
