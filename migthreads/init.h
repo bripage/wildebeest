@@ -29,6 +29,7 @@ long thread_end;
 long non_standard_classes;
 long class1;
 long class2;
+long get_epoch_accuracy;
 
 /// Data allocation and misc globals
 replicated long* working_vector;        // working vector for each nodelet

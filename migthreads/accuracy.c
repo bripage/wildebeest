@@ -8,10 +8,10 @@ void populateTestData() {
 	long i;
 	long sample = -1;
 	long feature;
-	long fixed_value;
 	long class;
 	long j = 0;
     long sample_count = -1;
+    long fixed_value;
 
 	long current_sample = -1;
 	test_features = NULL;
@@ -153,6 +153,7 @@ double getModelAccuracy(){
     long stop;
     long feature;
     long l_temp;
+
 
 	for (long i = 0; i < test_sample_count; i++) {
         dotProduct = 0;

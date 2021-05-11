@@ -15,12 +15,12 @@
 #include <math.h>
 
 // Data allocation and misc globals
-extern replicated long** working_vector;        // working vector for each nodelet
-extern replicated long** training_sample_indicies; // training data sample id's
-extern replicated long** training_feature_indicies;// training data feature id's (1:1 relationship to values vector)
-extern replicated long** training_values;          // training data values (non-zero values for all samples)
-extern replicated long** training_classifications; // training sample classes (single value for each sample)
-extern replicated long** deg_reciprocal;
+extern replicated long* working_vector;        // working vector for each nodelet
+extern replicated long* training_sample_indicies; // training data sample id's
+extern replicated long* training_feature_indicies;// training data feature id's (1:1 relationship to values vector)
+extern replicated long* training_values;          // training data values (non-zero values for all samples)
+extern replicated long* training_classifications; // training sample classes (single value for each sample)
+extern replicated long* deg_reciprocal;
 
 // replicated globals
 extern replicated long cluster_count;           // num of clusters per simulation (M)
@@ -31,7 +31,6 @@ extern replicated long samples_per_epoch;       // num samples to evaluate per e
 extern replicated long total_train_points;      // non-zeros in training data set
 extern replicated long train_sample_count;      // samples in training data set (equivalent to row count in matrix)
 extern replicated long featureSetSize;          // num features in training data set (equivalent to col count in matrix)
-extern replicated long** deg_reciprocal;
 extern replicated long sample_start;
 extern replicated long sample_end;
 

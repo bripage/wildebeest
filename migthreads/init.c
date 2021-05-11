@@ -20,6 +20,7 @@ void parse_args(int argc, char * argv[]) {
     thread_end = 1;
     nodelet_count_end = 1;
     non_standard_classes = 0;
+    get_epoch_accuracy = 0;
 
     for (i = 1; i < argc; i++){
         if (!strcmp(argv[i],"--train-data")){
@@ -56,6 +57,10 @@ void parse_args(int argc, char * argv[]) {
         } else if (!strcmp(argv[i],"--compute-accuracy")){
             compute_accuracy = 1;
             printf("Compute Accuracy ON\n");
+            fflush(stdout);
+        } else if (!strcmp(argv[i],"--get-epoch-accuracy")){
+            get_epoch_accuracy = 1;
+            printf("Get Epoch Accuracy TRUE\n");
             fflush(stdout);
         } else if (!strcmp(argv[i],"-e")){
             num_arg = atoi(argv[i+1]);
@@ -158,7 +163,7 @@ void populateTrainingData() {
     long points;
     long *binBuffer;
     long bytesRead;
-/*
+
     if (non_zeros > 10000000) {
         long chunk_count;
         if (non_zeros % 10000000 != 0) {
@@ -213,8 +218,8 @@ void populateTrainingData() {
 
                 if (sample != current_sample) {
                     sample_count++;
-                    printf("Populating Sample %ld\n", sample_count);
-                    fflush(stdout);
+                    //printf("Populating Sample %ld\n", sample_count);
+                    //fflush(stdout);
                     training_feature_indicies[j] = 0;
                     training_values[j] = 1;
                     //REMOTE_ADD(&training_values[j], 1);
@@ -244,7 +249,7 @@ void populateTrainingData() {
         }
         training_sample_indicies[sample_count + 1] = j; // add sample id end ptr
     } else {
-*/
+
         points = non_zeros * 4;
         printf("points = %ld\n", points);
         fflush(stdout);
@@ -280,8 +285,8 @@ void populateTrainingData() {
 
             if (sample != current_sample) {
                 sample_count++;
-                printf("Populating Sample %ld\n", sample_count);
-                fflush(stdout);
+                //printf("Populating Sample %ld\n", sample_count);
+                //fflush(stdout);
                 training_feature_indicies[j] = 0;
                 training_values[j] = 1;
                 //REMOTE_ADD(&training_values[j], 1);
@@ -326,7 +331,7 @@ void populateTrainingData() {
 
         printf("populate_data() done\n");
         fflush(stdout);
-    //}
+    }
 }
 
 void init_mem(long n) {

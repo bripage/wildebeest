@@ -22,6 +22,7 @@ extern replicated long samples_per_epoch;       // num samples to evaluate per e
 extern long non_standard_classes;
 extern long class1;
 extern long class2;
+extern long get_epoch_accuracy;
 
 /// Data allocation and misc globals
 extern replicated long* working_vector;        // working vector for each nodelet

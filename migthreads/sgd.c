@@ -4,7 +4,7 @@
 
 #include "sgd.h"
 
-void train(long i, long threads, long scalar) {
+void train(long i, long scalar, long threads) {
     DISABLE_ACKS();
     long j;
     long start;
