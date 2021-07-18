@@ -202,7 +202,8 @@ void populateTrainingData() {
 
 
 void init() {
-    long *lPtr
+    long *lPtr;
+    
     /** Allocate stripped arrays for model vectors and training sample data */
     lPtr = (long *) mw_malloc1dlong(featureSetSize);
     mw_replicated_init((long *) &model_vector, (long) lPtr);
