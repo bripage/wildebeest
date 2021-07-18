@@ -1,8 +1,7 @@
 CC=g++
 UTILS_PATH=utils/
 
-all:
-	shuffle lib2csv csv2bin
+all: shuffle lib2csv csv2bin
 
 shuffle:
 	$(CC) -O3 -o shuffle shuffle.cpp
