@@ -27,7 +27,7 @@ void parse_args(int argc, char * argv[]) {
         if (!strcmp(argv[i],"--trainers")){
             num_arg = atoi(argv[i+1]) + 1;
             mw_replicated_init(&threads, num_arg);
-            printf("Trainer Count = %s\n",threads);
+            printf("Trainer Count = %d\n",threads);
             fflush(stdout);
             i++;
         } else if (!strcmp(argv[i],"--train-data")){
