@@ -11,7 +11,7 @@
  */
 
 void populateTestData() {
-    long i, j = 0, sample_count = -1, current_sample = -1, fixed_value;
+    long i, j = 0, current_sample = -1, fixed_value;
     long sample = -1, feature, class;
     test_features = NULL;
     test_features = fopen(test_feature_path, "rb");
