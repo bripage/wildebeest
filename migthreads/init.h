@@ -4,7 +4,7 @@
 
 #ifndef EMUSGD_INIT_H
 #define EMUSGD_INIT_H
-#include "../utility/emu.h"
+#include "emu.h"
 #include "stdlib.h"
 #include "unistd.h"
 #include "stddef.h"
@@ -12,57 +12,40 @@
 #include <string.h>
 #include <math.h>
 
-/// Temporary variables and execution behavior flags
-double initial_step_size;                // becomes eta
-double initial_step_decay;               // becomes gamma
-FILE * train_data;                       // training data file ptr
-FILE * class_data;                       // training data sample class file ptr
-char * train_data_path;                  // path to training data file
-char * class_data_path;                  // path to training sample class file
-char* test_feature_path;                 // path to accuracy testing file
-char* test_label_path;                   // path to accuracy testing sample class file
-replicated long compute_accuracy;        // accuracy computation flag
-long nodelet_count_start;
-long thread_start;
-long nodelet_count_end;
-long thread_end;
-long non_standard_classes;
-long class1;
-long class2;
-long get_epoch_accuracy;
+/** local/temporary variables */
+FILE * train_data;                       /** training data file ptr */
+FILE * class_data;                       /** training data sample class file ptr */
+char * train_data_path;                  /** path to training data file */
+char * class_data_path;                  /** path to training sample class file */
+char* test_feature_path;                 /** path to accuracy testing file */
+char* test_label_path;                   /** path to accuracy testing sample class file */
+double initial_step_size;                /** becomes eta */
+double initial_step_decay;               /** becomes gamma */
 
-/// Data allocation and misc globals
-replicated long* working_vector;        // working vector for each nodelet
-replicated long* training_sample_indicies; // training data sample id's
-replicated long* training_feature_indicies;// training data feature id's (1:1 relationship to values vector)
-replicated long* training_values;          // training data values (non-zero values for all samples)
-replicated long* training_classifications; // training sample classes (single value for each sample)
-replicated long* test_sample_indicies;
-replicated long* test_feature_indicies;
-replicated long* test_values;
-replicated long* test_classifications;
-replicated long* deg_reciprocal;
+/** Replicated global variables for training or execution flow */
+long non_standard_classes;               /** flag indicating training data's class values are not 0 or 1 */
+long class1, class2;                     /** The class values present in the training data set to be updated */
+extern replicated long threads;                 /** number of threads used for training */
+extern replicated long gamma;                   /** step_decay - updates every epoch */
+extern replicated long eta;                     /** step_size - remains constant */
+extern replicated long total_epochs;            /** num of epochs to run */
+extern replicated long featureSetSize;          /** Maximum possible features for an arbitrary sample */
+extern replicated long train_sample_count;      /** number of samples in training data */
+extern replicated long total_train_points;      /** Number of training data points in the data set */
+extern replicated long test_sample_count;       /** Number of test data samples */
+extern replicated long total_test_points;       /** Number of test data points */
 
-/// Replicated globals
-replicated long cluster_count;              // num of clusters per simulation (M)
-replicated long nodeletCount;               // number of nodelets used on the EMU system
-replicated long threads_per_cluster;        // number of threads per cluster
-replicated long total_epochs;               // num of epochs to run on each cluster
-replicated long samples_per_epoch;          // num samples to evaluate per epoch
-replicated long gamma;                      // initial step decay
-replicated long eta;                        // initial step size
-replicated long total_train_points;         // non-zeros in training data set
-replicated long train_sample_count;         // samples in training data set (equivalent to row count in matrix)
-replicated long featureSetSize;             // num features in training data set (equivalent to col count in matrix)
-replicated long total_test_points;
-replicated long test_sample_count;
-replicated long sample_start;
-replicated long sample_end;
+/** stripped arrays pointers for allocating memory to hold training and testing data */
+extern replicated long* model_vector;              /** model vector to be updated during training */
+extern replicated long* training_sample_indicies;  /** starting element index into training_values for given sample */
+extern replicated long* training_feature_indicies; /** training data feature id's (1:1 relationship to values vector) */
+extern replicated long* training_values;           /** training data values (non-zero values for all samples) */
+extern replicated long* training_classifications;  /** training sample classes (single value for each sample) */
+extern replicated long* test_sample_indicies;      /** test sample element index into test_values */
+extern replicated long* test_feature_indicies;     /** feature id's (1:1 relationship to values vector) */
+extern replicated long* test_values;               /** test data for all samples */
+extern replicated long* test_classifications;      /** known classification for each test sample */
+extern replicated long* deg_reciprocal;            /** number of occurances for each feature (needed for training) */
 
-void parse_args(int argc, char * argv[]);
 void init();
-void init_mem(long n);
-void reset_mem(long n);
-void reset_cluster_count(long n, long nodelet_count, long samples_per_nodelet);
-
 #endif //EMUSGD_INIT_H

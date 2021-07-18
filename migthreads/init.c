@@ -8,19 +8,20 @@
 #include "init.h"
 #include "accuracy.h"
 
+/** pars_args() - reads in command line parameters for data set characteristics as well as system size. Replicated
+ * variables are used where appropriate to insure thread migrations do not occur during execution by creating a local
+ * copy on every node.
+ *
+ * @param argc
+ * @param argv
+ */
 void parse_args(int argc, char * argv[]) {
     long num_arg;
     long i;
     double scaled_float;
     train_data_path = NULL;
     test_feature_path = NULL;
-    compute_accuracy = 0;
-    nodelet_count_start = 1;
-    thread_start = 1;
-    thread_end = 1;
-    nodelet_count_end = 1;
     non_standard_classes = 0;
-    get_epoch_accuracy = 0;
 
     for (i = 1; i < argc; i++){
         if (!strcmp(argv[i],"--train-data")){
@@ -54,14 +55,6 @@ void parse_args(int argc, char * argv[]) {
             fflush(stdout);
             non_standard_classes = 1;
             i+=2;
-        } else if (!strcmp(argv[i],"--compute-accuracy")){
-            compute_accuracy = 1;
-            printf("Compute Accuracy ON\n");
-            fflush(stdout);
-        } else if (!strcmp(argv[i],"--get-epoch-accuracy")){
-            get_epoch_accuracy = 1;
-            printf("Get Epoch Accuracy TRUE\n");
-            fflush(stdout);
         } else if (!strcmp(argv[i],"-e")){
             num_arg = atoi(argv[i+1]);
             mw_replicated_init(&total_epochs, num_arg);
@@ -86,37 +79,11 @@ void parse_args(int argc, char * argv[]) {
 	        printf("total_test_points = %ld\n", total_test_points);
 	        fflush(stdout);
 	        i++;
-        } else if (!strcmp(argv[i],"--nodelet-start")){
-            num_arg = atoi(argv[i+1]);
-            nodelet_count_start = num_arg;
-            printf("Nodelet Count Start = %ld\n", nodelet_count_start);
-            fflush(stdout);
-            i++;
-        } else if (!strcmp(argv[i],"--thread-start")){
-            num_arg = atoi(argv[i+1]);
-            thread_start = num_arg;
-            printf("Threads Per Nodelet Start = %ld\n", thread_start);
-            fflush(stdout);
-            i++;
-        } else if (!strcmp(argv[i],"--nodelet-count-end")){
-            num_arg = atoi(argv[i+1]);
-            nodelet_count_end = num_arg;
-            printf("Nodelet Count End = %ld\n", nodelet_count_end);
-            fflush(stdout);
-            i++;
-        } else if (!strcmp(argv[i],"--thread-end")){
-            num_arg = atoi(argv[i+1]);
-            thread_end = num_arg;
-            printf("Threads Per Nodelet End = %ld\n", thread_end);
-            fflush(stdout);
-            i++;
         } else if (!strcmp(argv[i],"--initial-step-size")){
             sscanf(argv[i+1],"%lf",&scaled_float);
             double d_temp = scaled_float * 16777216;
             long eta_init = (long) d_temp;
             mw_replicated_init(&eta, eta_init);
-            //initial_step_size = scaled_float;
-
             printf("initial step size: %lf\n", scaled_float);
             fflush(stdout);
             i++;
@@ -125,18 +92,21 @@ void parse_args(int argc, char * argv[]) {
             double d_temp = scaled_float * 16777216;
             long gamma_init = (long) d_temp;
             mw_replicated_init(&gamma, gamma_init);
-            //initial_step_decay = scaled_float;
-
             printf("initial_step_decay = %lf\n", scaled_float);
             fflush(stdout);
             i++;
         }
     }
 
-    printf("--- Parsing Arguments Complete ---\n");
-    fflush(stdout);
 }
 
+/**
+ * populateTrainingData() reads in test sample data for the current data set, in binary format as output by the csv2bin
+ * utility. Training data is stored as three arrays: sample_indicies, feature_indicies, values. Training data arrays are
+ * allocated using the mw_malloc1dlong intrinsic operation and are therefore stripped across all nodes in the system.
+ * NOTE: In this version of Wildebeest each node gets a complete copy of the training data, this is not necessary but
+ * was done for simplicity.
+ */
 void populateTrainingData() {
     printf("inside populate_data()\n");
     fflush(stdout);
@@ -150,7 +120,7 @@ void populateTrainingData() {
     long current_sample = -1;
     long sample_count = -1;
     training_sample_indicies[0] = 0;
-    MIGRATE(&working_vector[0]);
+    MIGRATE(&model_vector[0]);
 
     train_data = NULL;
     train_data = fopen(train_data_path, "rb");
@@ -164,225 +134,109 @@ void populateTrainingData() {
     long *binBuffer;
     long bytesRead;
 
-    if (non_zeros > 10000000) {
-        long chunk_count;
-        if (non_zeros % 10000000 != 0) {
-            chunk_count = (non_zeros / 10000000) + 1;
-        } else {
-            chunk_count = non_zeros / 10000000;
-        }
-        printf("chunk_count = %ld\n", chunk_count);
-        fflush(stdout);
 
-        binBuffer = (long *) malloc(10000000 * sizeof(long));
-        for (long chunk = 0; chunk < chunk_count; chunk++) {
-            if (chunk != chunk_count - 1) {
-                points = 10000000;
-                printf("1 chunk %ld, points = %ld\n", chunk, points);
-                fflush(stdout);
+    points = non_zeros * 4;
+    printf("points = %ld\n", points);
+    fflush(stdout);
+
+    binBuffer = (long *) malloc(points * sizeof(long));
+    bytesRead = fread(binBuffer, sizeof(long), points, train_data);
+
+    if (bytesRead != (points)) {
+        printf("*** Feature File Read Failure ***\n");
+        exit(1);
+    }
+
+    for (i = 0; i < points; i += 4) {
+        sample = binBuffer[i];
+        feature = binBuffer[i + 1];
+        fixed_value = binBuffer[i + 2];
+        class = binBuffer[i + 3];
+
+        if (non_standard_classes) {
+            if (class == class1) {
+                class = -1;
+            } else if (class == class2) {
+                class = 1;
             } else {
-                points = non_zeros - (chunk * 10000000);
-                free(binBuffer);
-                binBuffer = (long *) malloc(points * sizeof(long));
-                printf("2 chunk %ld, points = %ld\n", chunk, points);
+                printf("ERROR: Training Data classes do not match class range\n");
                 fflush(stdout);
-            }
-            bytesRead = fread(binBuffer, sizeof(long), points, train_data);
-            if (bytesRead != (points)) {
-                printf("bytesRead = %ld, points = %ld\n", bytesRead, points);
-                fflush(stdout);
-                printf("***  File Read Failure ***\n");
-                exit(1);
-            }
-
-            for (i = 0; i < points; i += 4) {
-                sample = binBuffer[i];
-                feature = binBuffer[i + 1];
-                fixed_value = binBuffer[i + 2];
-                class = binBuffer[i + 3];
-
-                //printf("%ld, %ld, %ld, %ld\n", sample, feature, fixed_value, class);
-                //fflush(stdout);
-
-                if (non_standard_classes) {
-                    if (class == class1) {
-                        class = -1;
-                    } else if (class == class2) {
-                        class = 1;
-                    } else {
-                        printf("ERROR: Training Data classes do not match class range\n");
-                        fflush(stdout);
-                        exit(2);
-                    }
-                }
-
-                if (sample != current_sample) {
-                    sample_count++;
-                    //printf("Populating Sample %ld\n", sample_count);
-                    //fflush(stdout);
-                    training_feature_indicies[j] = 0;
-                    training_values[j] = 1;
-                    //REMOTE_ADD(&training_values[j], 1);
-                    deg_reciprocal[0]++;
-                    //REMOTE_ADD(&deg_reciprocal[0], 1);
-                    j++;
-                    training_sample_indicies[sample_count] = j;
-                    //REMOTE_ADD(&training_sample_indicies[sample], 1);
-                    training_feature_indicies[j] = feature;
-                    //REMOTE_ADD(&training_feature_indicies[j], feature);
-                    training_values[j] = fixed_value;
-                    //REMOTE_ADD(&training_values[j], fixed_value);
-                    training_classifications[sample_count] = class;
-                    //REMOTE_ADD(&training_classifications[sample], class);
-                    deg_reciprocal[feature]++;
-                    //REMOTE_ADD(&deg_reciprocal[feature], 1);
-                    current_sample = sample;
-                } else {
-                    training_feature_indicies[j] = feature;
-                    //REMOTE_ADD(&training_feature_indicies[j], feature);
-                    training_values[j] = fixed_value;
-                    //REMOTE_ADD(&training_values[j], fixed_value);
-                    deg_reciprocal[feature]++;
-                }
-                j++;
+                exit(2);
             }
         }
-        training_sample_indicies[sample_count + 1] = j; // add sample id end ptr
-    } else {
 
-        points = non_zeros * 4;
-        printf("points = %ld\n", points);
-        fflush(stdout);
-
-        binBuffer = (long *) malloc(points * sizeof(long));
-        bytesRead = fread(binBuffer, sizeof(long), points, train_data);
-
-        if (bytesRead != (points)) {
-            printf("*** Feature File Read Failure ***\n");
-            exit(1);
-        }
-
-        for (i = 0; i < points; i += 4) {
-            sample = binBuffer[i];
-            feature = binBuffer[i + 1];
-            fixed_value = binBuffer[i + 2];
-            class = binBuffer[i + 3];
-
-            //printf("%ld, %ld, %ld, %ld\n", sample, feature, fixed_value, class);
-            //fflush(stdout);
-
-            if (non_standard_classes) {
-                if (class == class1) {
-                    class = -1;
-                } else if (class == class2) {
-                    class = 1;
-                } else {
-                    printf("ERROR: Training Data classes do not match class range\n");
-                    fflush(stdout);
-                    exit(2);
-                }
-            }
-
-            if (sample != current_sample) {
-                sample_count++;
-                //printf("Populating Sample %ld\n", sample_count);
-                //fflush(stdout);
-                training_feature_indicies[j] = 0;
-                training_values[j] = 1;
-                //REMOTE_ADD(&training_values[j], 1);
-                deg_reciprocal[0]++;
-                //REMOTE_ADD(&deg_reciprocal[0], 1);
-                j++;
-                training_sample_indicies[sample_count] = j;
-                //REMOTE_ADD(&training_sample_indicies[sample], 1);
-                training_feature_indicies[j] = feature;
-                //REMOTE_ADD(&training_feature_indicies[j], feature);
-                training_values[j] = fixed_value;
-                //REMOTE_ADD(&training_values[j], fixed_value);
-                training_classifications[sample_count] = class;
-                //REMOTE_ADD(&training_classifications[sample], class);
-                deg_reciprocal[feature]++;
-                //REMOTE_ADD(&deg_reciprocal[feature], 1);
-                current_sample = sample;
-            } else {
-                training_feature_indicies[j] = feature;
-                //REMOTE_ADD(&training_feature_indicies[j], feature);
-                training_values[j] = fixed_value;
-                //REMOTE_ADD(&training_values[j], fixed_value);
-                deg_reciprocal[feature]++;
-            }
+        if (sample != current_sample) {
+            sample_count++;
+            training_feature_indicies[j] = 0;
+            training_values[j] = 1;
+            deg_reciprocal[0]++;
             j++;
+            training_sample_indicies[sample_count] = j;
+            training_feature_indicies[j] = feature;
+            training_values[j] = fixed_value;
+            training_classifications[sample_count] = class;
+            deg_reciprocal[feature]++;
+            current_sample = sample;
+        } else {
+            training_feature_indicies[j] = feature;
+            training_values[j] = fixed_value;
+            deg_reciprocal[feature]++;
         }
-        training_sample_indicies[sample_count + 1] = j; // add sample id end ptr
-        //REMOTE_ADD(&training_sample_indicies[sample + 1], j);
+        j++;
+    }
+    training_sample_indicies[sample_count + 1] = j; // add sample id end ptr
 
-        fclose(train_data);
-        free(binBuffer);
+    fclose(train_data);
+    free(binBuffer);
 
-        double d_temp;
-        long l_temp;
-        for (long i = 0; i <= featureSetSize; i++) {
-            d_temp = 1.0;
-            d_temp /= (double) deg_reciprocal[i];
-            d_temp *= 16777216;
-            l_temp = (long) d_temp;
-            deg_reciprocal[i] = l_temp;
-        }
-
-        printf("populate_data() done\n");
-        fflush(stdout);
+    double d_temp;
+    long l_temp;
+    for (long i = 0; i <= featureSetSize; i++) {
+        d_temp = 1.0;
+        d_temp /= (double) deg_reciprocal[i];
+        d_temp *= 16777216;
+        l_temp = (long) d_temp;
+        deg_reciprocal[i] = l_temp;
     }
 }
 
-void init_mem(long n) {
-
-}
-
-void reset_nodelet_count(long n, long nodelet_count, long samples_per_nodelet){
-
-}
 
 void init() {
-    long *init_temp_Ptr = (long *) mw_malloc1dlong(featureSetSize);
-    mw_replicated_init((long *) &working_vector, (long) init_temp_Ptr);
+    long *lPtr
+    /** Allocate stripped arrays for model vectors and training sample data */
+    lPtr = (long *) mw_malloc1dlong(featureSetSize);
+    mw_replicated_init((long *) &model_vector, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(featureSetSize);
+    mw_replicated_init((long *) &deg_reciprocal, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(train_sample_count + 1);
+    mw_replicated_init((long *) &training_sample_indicies, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(total_train_points);
+    mw_replicated_init((long *) &training_feature_indicies, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(total_train_points);
+    mw_replicated_init((long *) &training_values, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(train_sample_count);
+    mw_replicated_init((long *) &training_classifications, (long) lPtr);
 
-    init_temp_Ptr = (long *) mw_malloc1dlong(featureSetSize);
-    mw_replicated_init((long *) &deg_reciprocal, (long) init_temp_Ptr);
-
-    init_temp_Ptr = (long *) mw_malloc1dlong(train_sample_count + 1);
-    mw_replicated_init((long *) &training_sample_indicies, (long) init_temp_Ptr);
-
-    init_temp_Ptr = (long *) mw_malloc1dlong(total_train_points);
-    mw_replicated_init((long *) &training_feature_indicies, (long) init_temp_Ptr);
-
-    init_temp_Ptr = (long *) mw_malloc1dlong(total_train_points);
-    mw_replicated_init((long *) &training_values, (long) init_temp_Ptr);
-
-    init_temp_Ptr = (long *) mw_malloc1dlong(train_sample_count);
-    mw_replicated_init((long *) &training_classifications, (long) init_temp_Ptr);
-
-    if (compute_accuracy) {
-        init_temp_Ptr = (long *) mw_malloc1dlong(test_sample_count + 1);
-        mw_replicated_init((long *) &test_sample_indicies, (long) init_temp_Ptr);
-
-        init_temp_Ptr = (long *) mw_malloc1dlong(total_test_points);
-        mw_replicated_init((long *) &test_feature_indicies, (long) init_temp_Ptr);
-
-        init_temp_Ptr = (long *) mw_malloc1dlong(total_test_points);
-        mw_replicated_init((long *) &test_values, (long) init_temp_Ptr);
-
-        init_temp_Ptr = (long *) mw_malloc1dlong(test_sample_count);
-        mw_replicated_init((long *) &test_classifications, (long) init_temp_Ptr);
-    }
+    /** Allocate stripped arrays for storing test data */
+    lPtr = (long *) mw_malloc1dlong(test_sample_count + 1);
+    mw_replicated_init((long *) &test_sample_indicies, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(total_test_points);
+    mw_replicated_init((long *) &test_feature_indicies, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(total_test_points);
+    mw_replicated_init((long *) &test_values, (long) lPtr);
+    lPtr = (long *) mw_malloc1dlong(test_sample_count);
+    mw_replicated_init((long *) &test_classifications, (long) lPtr);
 
     printf("--- Memmory Allocation Complete ---\n");
 	fflush(stdout);
 
+	/** Zero-out allocated memory regions prior to running. This will be replaced with memset or its equivalent in
+	 * the near future
+	 * */
     for (long i = 0; i < featureSetSize; i++) {
-        working_vector[i] = 0;
+        model_vector[i] = 0;
         deg_reciprocal[i] = 0;
     }
-
     for (long i = 0; i < train_sample_count; i++) {
         training_sample_indicies[i] = 0;
         training_classifications[i] = 0;
@@ -393,13 +247,7 @@ void init() {
         training_values[i] = 0;
     }
 
-    MIGRATE(&working_vector[0]);
-	printf("--- Memmory Initialization Complete ---\n");
-	fflush(stdout);
-	populateTrainingData();
-    if (compute_accuracy) {
-        populateTestData();
-    }
-	printf("--- Initialization Complete ---\n");
-	fflush(stdout);
+    MIGRATE(&model_vector[0]); /** return to node 0 in preparation for training/testing data placement */
+	populateTrainingData(); /** read in training data */
+	populateTestData(); /** read in test data */
 }
