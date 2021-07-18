@@ -24,7 +24,12 @@ void parse_args(int argc, char * argv[]) {
     non_standard_classes = 0;
 
     for (i = 1; i < argc; i++){
-        if (!strcmp(argv[i],"--train-data")){
+        if (!strcmp(argv[i],"--trainers")){
+            train_data_path = (char *) malloc(strlen(argv[i+1]) * sizeof(char));
+            strcpy(threads, argv[i+1]);
+            printf("Trainer Count = %s\n",threads);
+            fflush(stdout);
+        } else if (!strcmp(argv[i],"--train-data")){
             train_data_path = (char *) malloc(strlen(argv[i+1]) * sizeof(char));
             strcpy(train_data_path, argv[i+1]);
             printf("train_data_path = %s\n",train_data_path);
