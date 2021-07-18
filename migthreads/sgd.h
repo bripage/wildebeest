@@ -16,6 +16,7 @@
 
 /** Replicated global variables for training or execution flow */
 extern replicated long threads;                 /** number of threads used for training */
+extern replicated long train_sample_count;      /** number of samples in training data */
 
 /** stripped arrays pointers for allocating memory to hold training and testing data */
 extern replicated long* model_vector;              /** model vector to be updated during training */
