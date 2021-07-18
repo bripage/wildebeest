@@ -25,10 +25,11 @@ void parse_args(int argc, char * argv[]) {
 
     for (i = 1; i < argc; i++){
         if (!strcmp(argv[i],"--trainers")){
-            train_data_path = (char *) malloc(strlen(argv[i+1]) * sizeof(char));
-            strcpy(threads, argv[i+1]);
+            num_arg = atoi(argv[i+1]) + 1;
+            mw_replicated_init(&threads, num_arg);
             printf("Trainer Count = %s\n",threads);
             fflush(stdout);
+            i++;
         } else if (!strcmp(argv[i],"--train-data")){
             train_data_path = (char *) malloc(strlen(argv[i+1]) * sizeof(char));
             strcpy(train_data_path, argv[i+1]);
