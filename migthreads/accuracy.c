@@ -19,22 +19,18 @@ void populateTestData() {
         printf("Failed to open test feature file.\n");
         exit(1);
     }
-
     long non_zeros = total_test_points - test_sample_count;
     long points;
     long *binBuffer;
     long bytesRead;
-
     points = non_zeros * 4;
-    printf("points = %ld\n", points);
-    fflush(stdout);
-
     binBuffer = (long *) malloc(points * sizeof(long));
     bytesRead = fread(binBuffer, sizeof(long), points, test_features);
     if (bytesRead != (points)) {
         printf("*** Test Feature File Read Failure ***\n");
         exit(1);
     }
+    
     for (i = 0; i < points; i += 4) {
         sample = binBuffer[i];
         feature = binBuffer[i + 1];
