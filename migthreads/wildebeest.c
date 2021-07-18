@@ -18,8 +18,6 @@
 
 int main(int argc, char **argv) {
     parse_args(argc, argv); /** Get command line parameters */
-    mw_replicated_init(&sample_start, 0);
-    mw_replicated_init(&sample_end, 0);
     init(); /** Allocate and zero-out associated memory regions */
 
     /**
