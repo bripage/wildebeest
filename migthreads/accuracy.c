@@ -30,7 +30,7 @@ void populateTestData() {
         printf("*** Test Feature File Read Failure ***\n");
         exit(1);
     }
-    
+
     for (i = 0; i < points; i += 4) {
         sample = binBuffer[i];
         feature = binBuffer[i + 1];
